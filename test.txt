@@ -1,0 +1,306 @@
+# Task Description
+# The data is for the same instrument on two different exchanges over three days. We would like
+# you to develop a strategy over the first two days and to test on the third day. Your strategy could
+# be to trade the instrument on either or both of the exchanges. Ideally, your strategy trades tens
+# to hundreds of times per day. In this task, you can assume a trading fee of 1 basis point (or
+# 0.01%). Also, please assume a trading latency of 100ms (time difference between order
+# placement and order fill).
+
+
+import matplotlib.pyplot as plt
+import numpy as np
+import os
+import pandas as pd
+data_ex1_20210519 = pd.read_csv(
+    'exchange1_20210519.csv.gz', compression='gzip', header=None)
+data_ex1_20210520 = pd.read_csv(
+    'exchange1_20210520.csv.gz', compression='gzip', header=None)
+data_ex1_20210521 = pd.read_csv(
+    'exchange1_20210521.csv.gz', compression='gzip', header=None)
+data_ex2_20210519 = pd.read_csv(
+    'exchange2_20210519.csv.gz', compression='gzip', header=None)
+data_ex2_20210520 = pd.read_csv(
+    'exchange2_20210520.csv.gz', compression='gzip', header=None)
+data_ex2_20210521 = pd.read_csv(
+    'exchange2_20210521.csv.gz', compression='gzip', header=None)
+
+# structure the columns so we can access
+
+column_names = ["MatchingTime", "ReceivingTime", "Symbol",
+                "BID_PRICE_1", "BID_QTY_1", "ASK_PRICE_1", "ASK_QTY_1",
+                "BID_PRICE_2", "BID_QTY_2", "ASK_PRICE_2", "ASK_QTY_2",
+                "BID_PRICE_3", "BID_QTY_3", "ASK_PRICE_3", "ASK_QTY_3",
+                "BID_PRICE_4", "BID_QTY_4", "ASK_PRICE_4", "ASK_QTY_4",
+                "BID_PRICE_5", "BID_QTY_5", "ASK_PRICE_5", "ASK_QTY_5",
+                "BID_PRICE_6", "BID_QTY_6", "ASK_PRICE_6", "ASK_QTY_6",
+                "BID_PRICE_7", "BID_QTY_7", "ASK_PRICE_7", "ASK_QTY_7",
+                "BID_PRICE_8", "BID_QTY_8", "ASK_PRICE_8", "ASK_QTY_8",
+                "BID_PRICE_9", "BID_QTY_9", "ASK_PRICE_9", "ASK_QTY_9",
+                "BID_PRICE_10", "BID_QTY_10", "ASK_PRICE_10", "ASK_QTY_10"]
+
+data_ex1_20210519.columns = column_names
+data_ex1_20210520.columns = column_names
+data_ex1_20210521.columns = column_names
+data_ex2_20210519.columns = column_names
+data_ex2_20210520.columns = column_names
+data_ex2_20210521.columns = column_names
+
+
+# data_ex1_20210519.iloc[1]
+
+
+def enhanceColumns(df: pd.DataFrame):
+    df["MatchingTime"] = pd.to_datetime(df["MatchingTime"])
+    df['MatchingTimeDelta'] = df['MatchingTime'].diff()
+    df["ReceivingTime"] = pd.to_datetime(df["ReceivingTime"])
+    df['ReceivingTimeDelta'] = df['ReceivingTime'].diff()
+    df.sort_values(by=["ReceivingTime"], inplace=True)
+    return df
+
+
+data_ex1_20210519 = enhanceColumns(data_ex1_20210519)
+data_ex1_20210520 = enhanceColumns(data_ex1_20210520)
+data_ex1_20210521 = enhanceColumns(data_ex1_20210521)
+
+data_ex2_20210519 = enhanceColumns(data_ex2_20210519)
+data_ex2_20210520 = enhanceColumns(data_ex2_20210520)
+data_ex2_20210521 = enhanceColumns(data_ex2_20210521)
+
+# join ex1 and ex2 data, identify if there is difference in prices in between.
+# what is the time period in matching time or receiving time
+# data_ex1_20210519.describe
+# data_ex1_20210519.shape
+
+# can do rolling left join to always ex1 data based on ReceivingTime or otherway around to create
+
+# ex2 as more rows, lets use that as left join
+data_ex1_20210519.set_index("ReceivingTime", inplace=True)
+data_ex2_20210519.set_index("ReceivingTime", inplace=True)
+
+data_ex1_20210520.set_index("ReceivingTime", inplace=True)
+data_ex2_20210520.set_index("ReceivingTime", inplace=True)
+
+data_ex1_20210521.set_index("ReceivingTime", inplace=True)
+data_ex2_20210521.set_index("ReceivingTime", inplace=True)
+
+
+# we are doing left join to ex2 so loosing some ex1 data another way to also left join to ex1 and concatenate these merges, so
+# you will have snaphots of ex1 and ex2 as of receive time from both exchanges
+merged = pd.merge_asof(data_ex2_20210519.head(1000), data_ex1_20210519.head(1000), direction="backward",
+                       left_index=True, right_index=True,
+                       suffixes=["ex2", "ex1"])
+
+merged = pd.merge_asof(data_ex2_20210521, data_ex1_20210521, direction="backward",
+                       left_index=True, right_index=True,
+                       suffixes=["ex2", "ex1"])
+
+# merged = pd.merge_asof(data_ex1_20210519, data_ex2_20210519, direction="backward",
+#                        left_index=True, right_index=True,
+#                        suffixes=["ex1", "ex2"])
+
+figFolder = 'date3_ex2ex1/'
+os.makedirs(figFolder, exist_ok=True)
+
+
+# TODO: lets check if the best-bid ask spread in ex1, and 2
+
+
+# line chart of bids and ask price and scatter chart
+# investigate for lead-lag, correlations, spread, volume in best-bid and ask
+
+
+# scatter chart
+
+
+def abline(slope, intercept):
+    """Plot a line from slope and intercept"""
+    axes = plt.gca()
+    x_vals = np.array(axes.get_xlim())
+    y_vals = intercept + slope * x_vals
+    plt.plot(x_vals, y_vals, '--')
+
+
+# put abline
+ax1 = merged.sample(10000).plot.scatter(x='BID_PRICE_1ex2', y='BID_PRICE_1ex1')
+abline(1, 0)
+fig = ax1.get_figure()
+fig.savefig(figFolder + 'scatterBID1.jpg')
+
+ax1 = merged.sample(10000).plot.scatter(x='ASK_PRICE_1ex2', y='ASK_PRICE_1ex1')
+abline(1, 0)
+fig = ax1.get_figure()
+fig.savefig(figFolder + 'scatterASK1.jpg')
+
+# time series plot
+# why is ex1 prices are always lower is it due to left join, so it captures an earlier price then ex2, but earlier doesnt always mean higher
+# this trend seems to be persistent
+ax1 = merged.sample(10000)[['ASK_PRICE_1ex2', 'ASK_PRICE_1ex1']].plot()
+fig = ax1.get_figure()
+fig.savefig(figFolder + 'lineChart_ASK.jpg')
+
+ax1 = merged.sample(10000)[['BID_PRICE_1ex2', 'BID_PRICE_1ex1']].plot()
+fig = ax1.get_figure()
+fig.savefig(figFolder + 'lineChart_BID.jpg')
+
+
+ax1 = merged.sample(10000)[['ASK_PRICE_1ex2', 'BID_PRICE_1ex1']].plot()
+fig = ax1.get_figure()
+fig.savefig(figFolder + 'lineChart_ASKvsBID.jpg')
+
+# OBSERVATION 1: market buy in ex1 market sell on ex2? BUY CHEAP SELL HIGH! Is this pattern persistent in multiple days
+ax1 = merged.sample(10000)[['BID_PRICE_1ex2',  'ASK_PRICE_1ex1']].plot()
+fig = ax1.get_figure()
+fig.savefig(figFolder + 'lineChart_BIDvsASK.jpg')
+
+# pd.set_option("max_rows", None)
+# pd.set_option("max_columns", None)
+# merged.head(1)
+# what is the time delta with this approach between ex2 and ex1 data
+
+# TODO: Check ReceivingTime - MatchingTime distributions this is the information delta from exchange to client
+# TODO: check the bid-ask quantities
+
+# best volume, 1% volume, 2% volume
+# df = pd.DataFrame({'BID_PRICE_1ex1': [1, 2, 3, 4, 5, 6],
+#                    'BID_QTY_1ex1': [1, 2, 3, 4, 5, 6]})
+
+# df['BID_PRICE_2ex1'] = df['BID_PRICE_1ex1']*0.995
+# df['BID_PRICE_3ex1'] = df['BID_PRICE_1ex1']*0.97
+
+# df['BID_QTY_2ex1'] = df['BID_QTY_1ex1']*0.995
+# df['BID_QTY_3ex1'] = df['BID_QTY_1ex1']*0.97
+# df.at[1, 'BID_PRICE_3ex1'] = df.at[1,'BID_PRICE_1ex1']*0.991
+
+
+def cumulative_vol_at_relative_to_top(df, level=0.01, bidOrAsk='BID', ex1or2='ex1'):
+    df_val = df.loc[:, df.columns.str.contains(
+        bidOrAsk + '_PRICE_\d+' + ex1or2, regex=True)]
+    df_qty = df.loc[:, df.columns.str.contains(
+        bidOrAsk + '_QTY_\d+' + ex1or2, regex=True)]
+    icell = df_val.div(df_val[bidOrAsk + '_PRICE_1' + ex1or2],
+                       axis='rows') > (1-level)
+    icell = icell.to_numpy()
+    volume = np.multiply(icell, df_qty).sum(axis=1)
+    return volume
+
+
+merged['BID_VOL_1PERCex1'] = cumulative_vol_at_relative_to_top(merged, level = 0.01, bidOrAsk='BID', ex1or2='ex1')
+merged['BID_VOL_05PERCex1'] = cumulative_vol_at_relative_to_top(merged, level = 0.005, bidOrAsk='BID', ex1or2='ex1')
+merged['BID_VOL_1PERCex2'] = cumulative_vol_at_relative_to_top(merged, level = 0.01, bidOrAsk='BID', ex1or2='ex2')
+merged['BID_VOL_05PERCex2'] = cumulative_vol_at_relative_to_top(merged, level = 0.005, bidOrAsk='BID', ex1or2='ex2')
+
+merged['ASK_VOL_1PERCex1'] = cumulative_vol_at_relative_to_top(merged, level = 0.01, bidOrAsk='ASK', ex1or2='ex1')
+merged['ASK_VOL_05PERCex1'] = cumulative_vol_at_relative_to_top(merged, level = 0.005, bidOrAsk='ASK', ex1or2='ex1')
+merged['ASK_VOL_1PERCex2'] = cumulative_vol_at_relative_to_top(merged, level = 0.01, bidOrAsk='ASK', ex1or2='ex2')
+merged['ASK_VOL_05PERCex2'] = cumulative_vol_at_relative_to_top(merged, level = 0.005, bidOrAsk='ASK', ex1or2='ex2')
+
+
+
+
+# plot the volume charts with respect to price
+
+
+ax1 = merged.sample(10000)[['BID_VOL_1PERCex1', 'BID_VOL_1PERCex2']].plot()
+fig = ax1.get_figure()
+fig.savefig(figFolder + 'lineChart_BIDVOL.jpg')
+
+
+ax1 = merged.sample(10000)[['ASK_VOL_1PERCex1', 'ASK_VOL_1PERCex2']].plot()
+fig = ax1.get_figure()
+fig.savefig(figFolder + 'lineChart_ASKVOL.jpg')
+
+
+ax1 = merged.sample(10000)[['ASK_VOL_1PERCex1', 'ASK_VOL_1PERCex2']].plot()
+fig = ax1.get_figure()
+fig.savefig(figFolder + 'lineChart_ASKVOL.jpg')
+
+
+ax1 = merged.sample(10000)[['BID_QTY_1ex2', 'ASK_QTY_1ex2']].plot()
+fig = ax1.get_figure()
+fig.savefig(figFolder + 'lineChart_BESTBIDASK.jpg')
+
+ax1 = merged.sample(10000)[['BID_QTY_1ex1', 'ASK_QTY_1ex1']].plot()
+fig = ax1.get_figure()
+fig.savefig(figFolder + 'lineChart_BESTBIDASKex1.jpg')
+
+# exchange two has more liquidity/order depth
+
+ax1 = merged.sample(10000).plot.scatter(x='ASK_VOL_1PERCex1', y='ASK_VOL_2PERCex1')
+abline(1, 0)
+fig = ax1.get_figure()
+fig.savefig(figFolder + 'scatterASKVOLex1.jpg')
+
+
+ax1 = merged.sample(10000).plot.scatter(x='ASK_VOL_1PERCex1', y='ASK_VOL_2PERCex1')
+abline(1, 0)
+fig = ax1.get_figure()
+fig.savefig(figFolder + 'scatterASKVOLex1.jpg')
+
+
+ax1 = merged.sample(10000).plot.scatter(x='ASK_VOL_1PERCex2', y='ASK_VOL_2PERCex2')
+abline(1, 0)
+fig = ax1.get_figure()
+fig.savefig(figFolder + 'scatterASKVOLex2.jpg')
+
+ax1 = merged.sample(10000).plot.scatter(x='ASK_VOL_1PERCex2', y='ASK_VOL_05PERCex2')
+abline(1, 0)
+fig = ax1.get_figure()
+fig.savefig(figFolder + 'scatterASKVOLex2_v2.jpg')
+
+ax1 = merged.sample(10000).plot.scatter(x='ASK_VOL_1PERCex2', y='ASK_QTY_1ex2')
+abline(1, 0)
+fig = ax1.get_figure()
+fig.savefig(figFolder + 'scatterASKVOLvsQTY1ex2.jpg')
+# OBSERVATION 2 volumne on ex2 is more than ex1
+
+### trageAlgo purchase on ex1 on ask price and sell on ex2 on bid price
+
+mergedex2ex1 = pd.merge_asof(data_ex2_20210521, data_ex1_20210521, direction="backward",
+                       left_index=True, right_index=True,
+                       suffixes=["ex2", "ex1"])
+mergedex1ex2 = pd.merge_asof(data_ex1_20210521, data_ex2_20210521, direction="backward",
+                       left_index=True, right_index=True,
+                       suffixes=["ex1", "ex2"])
+
+merged = mergedex2ex1.append(mergedex1ex2)
+# remove any duplicates 
+merged.shape
+#you got the same matching time means ex1 and ex2 data are identical, no new information take those out..., what about receiving time?
+test = merged.drop_duplicates(subset =['MatchingTimeex1', 'MatchingTimeex2'] )
+test.shape
+# >>> test.shape
+# (5677072, 88)
+data_ex1_20210521.shape[0] + data_ex2_20210521.shape[0]
+# 5774758
+test2 = merged.reset_index().drop_duplicates(subset= 'ReceivingTime').set_index('ReceivingTime')
+test2.shape
+# >>> test2.shape
+# (5669725, 88)
+# several items received at same time while they have separate matching times
+
+ex1_receive_time ex1_matching_time
+ex2_receive_time ex2_matching_time
+
+
+# we only proceed on updated information so drop duplicates on matching times
+
+test.sort_index(inplace=True)
+ax1 = test.sample(10000)[['BID_PRICE_1ex2',  'ASK_PRICE_1ex1']].plot()
+fig = ax1.get_figure()
+fig.savefig(figFolder + 'lineChart_BIDvsASK_test.jpg')
+
+
+
+test[['BID_PRICE_1ex2',  'ASK_PRICE_1ex1', 'MatchingTimeex1', 'MatchingTimeex2','BID_QTY_1ex2' ,'ASK_QTY_1ex1']].head(50)
+for index, row in test.head(100).iterrows():
+    # test buy top of order book on ex1 ask price and sell on ex2 on bid price
+    # this could be enhanced to buy further on ex1 then the best ask price till the price goes above the trade fees
+    
+    # assume we ran this strategy every min, actually we can probably run it more but we would be creating market impact
+    # and the exercise is asking hundreds of trades a day, 1 trade trial a min should satisfy this requirement
+    buy_price = row['ASK_PRICE_1ex1']
+    if buy_price is not np.NAN:
+        # send market buy order, it will finish in 0.1ms, so execution price will be closer to BEST ASK_PRICE_1ex1 at 0.1ms
+        # after that send market sell order on ex2 for same qty
+
+
